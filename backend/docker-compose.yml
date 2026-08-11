@@ -1,0 +1,43 @@
+
+services:
+  # Base de données relationnelle
+  db:
+    image: postgres:16-alpine
+    container_name: cinematch_db
+    restart: always
+    environment:
+      POSTGRES_USER: cinematch_user
+      POSTGRES_PASSWORD: cinematch_password
+      POSTGRES_DB: cinematch_db
+    ports:
+      - "5433:5433"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Base en mémoire pour le Cache & WebSocket
+  redis:
+    image: redis:7-alpine
+    container_name: cinematch_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # API Backend FastAPI
+  web:
+    build: .
+    container_name: cinematch_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://cinematch_user:cinematch_password@db:5433/cinematch_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - .:/app  # Synchronise le code local avec le conteneur pour le Hot Reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
